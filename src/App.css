@@ -3,7 +3,7 @@
 }
 
 .App-logo {
-  height: 40vmin;
+  height: 20vmin;
   pointer-events: none;
 }
 
@@ -35,4 +35,13 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.App-h2 {
+  color: rgb(253, 253, 253);
+  background-color: #282c34;
+  width: 40vh;
+  text-align: center;
+  margin-top: 5vh;
+  margin-left: 55vh;
 }
