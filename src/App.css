@@ -154,6 +154,7 @@ body {
   gap: 2px;
   overflow-x: auto;
   position: relative;
+  margin-left: 100px;
 }
 
 .week-column {
@@ -181,6 +182,7 @@ body {
   font-size: 0.75rem;
   color: #888;
   gap: 2px;
+  margin-left: 100px;
 }
 
 .month-label {

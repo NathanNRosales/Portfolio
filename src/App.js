@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import logo from "./initial_Logo.jpg";
 import "./App.css";
+import ContactForm from "./contactform";
 
 function App() {
   const [data, setData] = useState(null);
@@ -10,10 +11,13 @@ function App() {
   useEffect(() => {
     // Fetch GitHub contribution data
     const fetchData = async () => {
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+
       const query = `
-        query($userName:String!) {
-          user(login:$userName) {
-            contributionsCollection {
+        query($userName: String!, $from: DateTime!, $to: DateTime!) {
+          user(login: $userName) {
+            contributionsCollection(from: $from, to: $to) {
               contributionCalendar {
                 totalContributions
                 weeks {
@@ -38,12 +42,39 @@ function App() {
           },
           body: JSON.stringify({
             query,
-            variables: { userName: username },
+            variables: {
+              userName: username,
+              from: startOfYear.toISOString(),
+              to: now.toISOString(),
+            },
           }),
         });
 
         const json = await res.json();
-        setData(json.data.user.contributionsCollection.contributionCalendar);
+        const calendar = json.data.user.contributionsCollection.contributionCalendar;
+
+        // Filter weeks to only include contribution days from this year
+        const filteredWeeks = calendar.weeks
+          .map((week) => ({
+            ...week,
+            contributionDays: week.contributionDays.filter(
+              (day) => new Date(day.date) >= startOfYear
+            ),
+          }))
+          .filter((week) => week.contributionDays.length > 0);
+
+        setData({
+          totalContributions: filteredWeeks.reduce(
+            (sum, week) =>
+              sum +
+              week.contributionDays.reduce(
+                (weekSum, day) => weekSum + day.contributionCount,
+                0
+              ),
+            0
+          ),
+          weeks: filteredWeeks,
+        });
       } catch (err) {
         console.error("GitHub API error:", err);
       }
@@ -148,78 +179,62 @@ function App() {
 
         {/* 💚 GitHub Contribution Calendar */}
         <div className="github-section">
-  <h3>My GitHub Activity</h3>
-  
-  {!data ? (
-    <p>Loading contributions...</p>
-  ) : (
-    <div>
-      <p>Total Contributions: {data.totalContributions}</p>
+          <h3>My GitHub Activity ({new Date().getFullYear()})</h3>
+          {!data ? (
+            <p>Loading contributions...</p>
+          ) : (
+            <div>
+              <p>Total Contributions: {data.totalContributions}</p>
 
-      {/* Contribution Grid */}
-      <div className="relative">
-        <div className="grid-container">
-          {data.weeks.map((week, wi) => (
-            <div key={wi} className="week-column">
-              {week.contributionDays.map((day, di) => (
-                <div
-                  key={di}
-                  title={`${day.date}: ${day.contributionCount} contributions`}
-                  className="day-square"
-                  style={{ backgroundColor: day.color }}
-                ></div>
-              ))}
+              {/* Contribution Grid */}
+              <div className="relative">
+                <div className="grid-container">
+                  {data.weeks.map((week, wi) => (
+                    <div key={wi} className="week-column">
+                      {week.contributionDays.map((day, di) => (
+                        <div
+                          key={di}
+                          title={`${day.date}: ${day.contributionCount} contributions`}
+                          className="day-square"
+                          style={{ backgroundColor: day.color }}
+                        ></div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Month Labels */}
+                <div className="month-labels">
+                  {data.weeks.map((week, wi, filteredWeeks) => {
+                    const firstDay = week.contributionDays[0].date;
+                    const month = new Date(firstDay).toLocaleString("default", {
+                      month: "short",
+                    });
+                    const prevMonth =
+                      wi > 0
+                        ? new Date(
+                            filteredWeeks[wi - 1].contributionDays[0].date
+                          ).toLocaleString("default", { month: "short" })
+                        : null;
+                    return month !== prevMonth ? (
+                      <span key={wi} className="month-label">
+                        {month}
+                      </span>
+                    ) : (
+                      <span key={wi} className="month-label"></span>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          ))}
+          )}
         </div>
-
-        {/* Month Labels */}
-        <div className="month-labels">
-          {data.weeks.map((week, wi) => {
-            const firstDay = week.contributionDays[0].date;
-            const month = new Date(firstDay).toLocaleString("default", {
-              month: "short",
-            });
-
-            // Only show month label if it's the first occurrence
-            const prevWeek = data.weeks[wi - 1];
-            const prevMonth = prevWeek
-              ? new Date(prevWeek.contributionDays[0].date).toLocaleString(
-                  "default",
-                  { month: "short" }
-                )
-              : null;
-
-            return month !== prevMonth ? (
-              <span key={wi} className="month-label">
-                {month}
-              </span>
-            ) : (
-              <span key={wi} className="month-label"></span>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  )}
-</div>
-
       </section>
 
       {/* Contact Section */}
       <section id="contact" className="section contact">
         <h2>Contact Me</h2>
-        <form id="contact-form" className="contact-form">
-          <input type="text" id="name" placeholder="Your Name" required />
-          <input type="email" id="email" placeholder="Your Email" required />
-          <textarea
-            id="message"
-            placeholder="Your Message"
-            rows="4"
-            required
-          ></textarea>
-          <button type="submit">Send Message</button>
-        </form>
+        <ContactForm />
       </section>
     </div>
   );
